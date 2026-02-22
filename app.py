@@ -17,10 +17,14 @@ def get_bus_data(target_url):
     options.add_argument('--no-sandbox')
     options.add_argument('--disable-dev-shm-usage')
     
-    # サーバー上でChromeを動かすための設定なのだ！
+    # --- ここから「3つの魔法」を追加なのだ！ ---
+    options.add_argument('--disable-gpu')
+    options.add_argument('--remote-debugging-port=9222')
+    # ---------------------------------------
+    
     service = Service(ChromeDriverManager().install())
     driver = webdriver.Chrome(service=service, options=options)
-    
+
     try:
         driver.get(target_url)
         time.sleep(3)
@@ -38,4 +42,5 @@ if st.button('最新のバスを調べるのだ！'):
         res_b = get_bus_data(URL_B)
         col1, col2 = st.columns(2)
         with col1: st.metric("上尾駅行き", res_a)
+
         with col2: st.metric("宮原駅行き", res_b)
