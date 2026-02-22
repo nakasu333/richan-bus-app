@@ -1,3 +1,4 @@
+import os
 import streamlit as st
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
@@ -13,15 +14,18 @@ URL_B = "https://transfer-cloud.navitime.biz/tobubus/approachings?departure-buss
 def get_bus_data(target_url):
     options = Options()
     options.add_argument('--headless')
-    options.add_argument('--no-sandbox')
-    options.add_argument('--disable-dev-shm-usage')
-    options.add_argument('--disable-gpu')
-    # サーバー上のパスを直接指定するのだ！
-    options.binary_location = "/usr/bin/chromium" 
-    
-    # Serviceの設定をシンプルにするのだ
-    service = Service("/usr/bin/chromedriver")
-    
+    # ...（中略）
+
+    # 🌟 ここで「PCかサーバーか」を自動で切り替えるのだ！
+    if os.path.exists("/usr/bin/chromium"):
+        # サーバー（Streamlit Cloud）の時の設定
+        options.binary_location = "/usr/bin/chromium"
+        service = Service("/usr/bin/chromedriver")
+    else:
+        # いたまるのPC（Windows）の時の設定
+        # 自分のPCなら、何も書かなくてOK！自動でChromeを探してくれるのだ🤤
+        service = Service()
+
     try:
         driver = webdriver.Chrome(service=service, options=options)
         driver.get(target_url)
