@@ -18,13 +18,12 @@ ROUTES = {
     ]
 }
 
-def get_bus_time(url):
+def get_bus_times(url):
     options = Options()
     options.add_argument('--headless')
     options.add_argument('--no-sandbox')
     options.add_argument('--disable-dev-shm-usage')
     
-    # 🌟 サーバーかPCかを判断してサービスを準備
     if os.path.exists('/usr/bin/chromedriver'):
         service = Service('/usr/bin/chromedriver')
     else:
@@ -33,59 +32,61 @@ def get_bus_time(url):
     driver = webdriver.Chrome(service=service, options=options)
     
     try:
-        driver.get(url) # 🌟 ここを url に修正したのだ！
-        time.sleep(3)
+        driver.get(url)
+        time.sleep(5) # 読み込みをしっかり待つ
         
-        # 🎯 狙い撃ち作戦：大きな数字の「枠」だけを見る
-        try:
-            # 「approach-info-time」というクラス名の場所をピンポイントで探す
-            target_element = driver.find_element("class name", "approach-info-time")
-            info_text = target_element.text
+        # 1. ページ全体のテキストをバサッと取得
+        body_text = driver.find_element("tag name", "body").text
+        
+        # 🎯 魔法の正規表現なのだ！
+        # 「あと約」から始まって、数字があって、「分」で終わるものだけを全部拾う
+        # これで「○分遅れ」や「○個前」というノイズは完全に無視できるのだ🤤
+        real_times = re.findall(r"あと約\s*(\d+)\s*分", body_text)
+        
+        # もし「あと約〜」で見つからなかった場合の予備（「まもなく」判定など）
+        if not real_times:
+            if "まもなく" in body_text:
+                return ["まもなく"]
+            return ["情報なし"]
             
-            # 「まもなく」があれば優先
-            if "まもなく" in info_text:
-                return "まもなく"
-            
-            # 「約○分」を探す（数字だけ抜き取る）
-            match = re.search(r"(\d+)", info_text)
-            if match:
-                return match.group(1)
-        except:
-            # 枠が見つからない時のバックアップ
-            body_text = driver.find_element("tag name", "body").text
-            match = re.search(r"約(\d+)分", body_text)
-            if match:
-                return match.group(1)
-
-        return "不明"
-    except Exception as e:
-        return "エラー"
+        return real_times # 見つかった数字のリスト [ "8", "25" ] が返る
+        
+    except Exception:
+        return ["エラー"]
     finally:
         driver.quit()
 
 # --- 画面表示 ---
-st.set_page_config(page_title="いたまるバス予報", layout="centered")
-st.title("🚌 いたまる専用バス予報")
+st.set_page_config(page_title="いたまるバス予報 Pro", layout="centered", page_icon="🚌")
+st.title("🚌 いたまるバス予報 Pro")
+st.caption("〜ノイズ除去・次発対応版なのだ〜")
 
 tab1, tab2 = st.tabs(["🏢 駅へ行く", "🏠 家へ帰る"])
 
 def show_route_ui(route_list, key_suffix):
-    if st.button(f"最新のバスを調べるのだ！", key=f"btn_{key_suffix}"):
-        cols = st.columns(len(route_list))
-        for i, route in enumerate(route_list):
-            with cols[i]:
-                with st.spinner(f"{route['name']}を確認中..."):
-                    wait_time = get_bus_time(route['url'])
+    if st.button(f"最新のバスをスキャンするのだ！", key=f"btn_{key_suffix}"):
+        for route in route_list:
+            # 展開パネルでルートごとに見やすくするのだ
+            with st.expander(f"📍 {route['name']}", expanded=True):
+                with st.spinner(f"解析中..."):
+                    bus_list = get_bus_times(route['url'])
                     
-                    # 🌟 表示をきれいに整えるのだ
-                    if wait_time == "まもなく":
-                        display_val = "まもなく！"
-                    elif wait_time == "不明" or wait_time == "エラー":
-                        display_val = "情報なし"
+                    if bus_list[0] in ["情報なし", "エラー"]:
+                        st.warning("現在、運行情報が見当たらないのだ。")
                     else:
-                        display_val = f"約 {wait_time} 分"
+                        # 先発を表示
+                        first = bus_list[0]
+                        val = "まもなく発車！" if first == "まもなく" else f"約 {first} 分"
+                        st.metric(label="【先発】", value=val)
                         
-                    st.metric(label=route['name'], value=display_val)
+                        # 次発・次々発があれば表示
+                        if len(bus_list) > 1:
+                            sub_info = ""
+                            if len(bus_list) > 1:
+                                sub_info += f"🥈 **次発**: 約 {bus_list[1]} 分　"
+                            if len(bus_list) > 2:
+                                sub_info += f"🥉 **次々発**: 約 {bus_list[2]} 分"
+                            st.write(sub_info)
 
 with tab1:
     st.header("いってらっしゃいなのだ！")
