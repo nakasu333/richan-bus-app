@@ -90,7 +90,7 @@ def get_bus_data(url):
     
     try:
         driver.get(url)
-        time.sleep(5)
+        time.sleep(3)
         body_text = driver.find_element("tag name", "body").text
         
         wait_times = re.findall(r"あと約\s*(\d+)\s*分", body_text)
