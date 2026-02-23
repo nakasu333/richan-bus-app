@@ -8,6 +8,8 @@ import os
 import pandas as pd
 from datetime import datetime
 from concurrent.futures import ThreadPoolExecutor # 影分身の術！
+import gspread
+from oauth2client.service_account import ServiceAccountCredentials
 
 # --- 設定：ルート情報のまとめ ---
 ROUTES = {
@@ -22,19 +24,25 @@ ROUTES = {
 }
 
 # 💾 【先発のみ】遅延データをCSVに保存する関数なのだ
-def save_delay_to_csv(route_name, delay_val):
-    file_name = "bus_delay_log.csv"
-    now_dt = datetime.now()
-    now_str = now_dt.strftime("%Y-%m-%d %H:%M:%S")
-    is_weekend = 1 if now_dt.weekday() >= 5 else 0
-    
-    new_data = pd.DataFrame([[now_str, route_name, delay_val, is_weekend]], 
-                            columns=["日時", "ルート", "遅延(分)", "週末フラグ"])
-    
-    if not os.path.isfile(file_name):
-        new_data.to_csv(file_name, index=False, encoding="utf-8-sig")
-    else:
-        new_data.to_csv(file_name, mode='a', header=False, index=False, encoding="utf-8-sig")
+def save_delay_to_sheets(route_name, delay_val):
+    try:
+        # 認証の設定なのだ
+        scope = ['https://spreadsheets.google.com/feeds', 'https://www.googleapis.com/auth/drive']
+        creds = ServiceAccountCredentials.from_json_keyfile_name('credentials.json', scope)
+        client = gspread.authorize(creds)
+        
+        # スプレッドシートを開く（名前を合わせておくのだ）
+        sheet = client.open("bus_delay_log").sheet1
+        
+        now_dt = datetime.now()
+        now_str = now_dt.strftime("%Y-%m-%d %H:%M:%S")
+        is_weekend = "週末" if now_dt.weekday() >= 5 else "平日"
+        
+        # 行を追加するのだ！
+        sheet.append_row([now_str, route_name, delay_val, is_weekend])
+        st.success("スプレッドシートに記録したのだ！")
+    except Exception as e:
+        st.error(f"スプレッドシート保存エラーなのだ: {e}")
 
 def get_bus_data(url):
     options = Options()
@@ -110,7 +118,7 @@ def show_ui(route_list, key_suffix):
                     
                     # 【CSV保存】は先発の遅延のみ！
                     if delay_val is not None:
-                        save_delay_to_csv(route['name'], delay_val)
+                        save_delay_to_sheets(route['name'], delay_val)
 
 with tab1:
     show_ui(ROUTES["駅へ行く (🏢)"], "to_station")
