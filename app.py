@@ -12,6 +12,7 @@ from concurrent.futures import ThreadPoolExecutor
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
 import jpholiday
+import requests
 
 # --- 1. 時間の設定（日本時間 JST） ---
 JST = timezone(timedelta(hours=+9), 'JST')
@@ -55,6 +56,7 @@ def save_delay_to_sheets(route_name, delay_val):
     try:
         client = get_gspread_client()
         sheet = client.open("bus_delay_log").sheet1
+        weather, temp = get_weather()
         
         now_dt = datetime.now(JST)
         now_str = now_dt.strftime("%Y-%m-%d %H:%M:%S")
@@ -69,7 +71,7 @@ def save_delay_to_sheets(route_name, delay_val):
             day_type = "平日"
         
         # スプレッドシートに書き込む（day_typeを保存！）
-        sheet.append_row([now_str, route_name, delay_val, day_type])
+        sheet.append_row([now_str, route_name, delay_val, day_type, weather, temp])
     except Exception as e:
         st.error(f"保存エラーなのだ: {e}")
 
@@ -107,6 +109,33 @@ def get_bus_data(url):
         return [], None
     finally:
         driver.quit()
+
+def get_weather():
+    # 🗝️ ここにコピーしたAPIキー（長い英数字）を貼り付けるのだ！
+    # これがローカルPCで動くときの合言葉になるのだ。
+    api_key = "273d5e7ae763dd0d672ced3e980ab7b6" 
+    
+    # ☁️ Web版（Streamlit Cloud）の場合は、Secretsからキーを自動取得するのだ
+    try:
+        if "open_weather_api_key" in st.secrets:
+            api_key = st.secrets["open_weather_api_key"]
+    except:
+        pass # ローカルならエラーを無視して上の直接書いたキーを使うのだ
+
+    lat = 35.9735  # 上尾駅
+    lon = 139.5872
+    url = f"https://api.openweathermap.org/data/2.5/weather?lat={lat}&lon={lon}&appid={api_key}&units=metric&lang=ja"
+    
+    try:
+        response = requests.get(url, timeout=5)
+        if response.status_code == 200:
+            data = response.json()
+            return data['weather'][0]['description'], data['main']['temp']
+        else:
+            # キーがまだ有効になっていない（登録直後）場合はこうなるのだ
+            return "有効化待ち", 0.0
+    except:
+        return "通信失敗", 0.0
 
 # --- 5. UI（Streamlit画面） ---
 st.set_page_config(page_title="いたまるバス予報 Pro", layout="centered", page_icon="🚌")
