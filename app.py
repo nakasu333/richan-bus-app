@@ -25,7 +25,8 @@ ROUTES = {
     ],
     "家へ帰る (🏠)": [
         {"name": "ルートC (上尾駅から)", "url": "https://transfer-cloud.navitime.biz/tobubus/approachings?departure-busstop=00310765&arrival-busstop=00310731"},
-        {"name": "ルートD (宮原駅から)", "url": "https://transfer-cloud.navitime.biz/tobubus/approachings?departure-busstop=00310737&arrival-busstop=00310731"}
+        {"name": "ルートD (宮原駅から)", "url": "https://transfer-cloud.navitime.biz/tobubus/approachings?departure-busstop=00310737&arrival-busstop=00310731"},
+        {"name": "ルートE (大宮駅から)", "url": "https://transfer-cloud.navitime.biz/tobubus/approachings?departure-busstop=00310534&arrival-busstop=00310731"}
     ]
 }
 
