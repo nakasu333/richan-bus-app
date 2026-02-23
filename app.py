@@ -26,9 +26,16 @@ ROUTES = {
 # 💾 【先発のみ】遅延データをCSVに保存する関数なのだ
 def save_delay_to_sheets(route_name, delay_val):
     try:
-        # 認証の設定なのだ
         scope = ['https://spreadsheets.google.com/feeds', 'https://www.googleapis.com/auth/drive']
-        creds = ServiceAccountCredentials.from_json_keyfile_name('credentials.json', scope)
+        
+        # ☁️ Web版（Secrets）があるか確認
+        if "gcp_service_account" in st.secrets:
+            import json
+            service_account_info = json.loads(st.secrets["gcp_service_account"])
+            creds = ServiceAccountCredentials.from_json_keyfile_dict(service_account_info, scope)
+        # 💻 ローカル版（ファイル）を使う
+        else:
+            creds = ServiceAccountCredentials.from_json_keyfile_name('credentials.json', scope)
         client = gspread.authorize(creds)
         
         # スプレッドシートを開く（名前を合わせておくのだ）
